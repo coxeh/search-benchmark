@@ -1,0 +1,6 @@
+.git
+*.md
+frontend/node_modules
+frontend/dist
+data/*.csv
+data/benchmark_results.json

@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: vector
+      POSTGRES_PASSWORD: vector
+      POSTGRES_DB: vectorsearch
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vector -d vectorsearch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    build:
+      context: ./ollama
+      dockerfile: Dockerfile
+    environment:
+      OLLAMA_DEBUG: "1"
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c", "ollama serve & SERVE_PID=$!; until ollama list 2>/dev/null; do sleep 1; done; ollama pull bge-m3; wait $SERVE_PID"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags | grep -q bge-m3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 300s
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://vector:vector@postgres:5432/vectorsearch
+      OLLAMA_HOST: http://ollama:11434
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_API_PROXY_TARGET: http://api:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    command: npm run dev -- --host 0.0.0.0
+
+  scripts:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://vector:vector@postgres:5432/vectorsearch
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+      - ./tests:/app/tests
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  ollama_data:

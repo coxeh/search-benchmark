@@ -1,0 +1,21 @@
+# API
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+asyncpg>=0.30.0
+httpx>=0.28.0
+pgvector>=0.3.0
+pydantic>=2.0.0
+
+# Scripts (ingest, generate_csv, benchmark)
+psycopg2-binary>=2.9.0
+ollama>=0.3.0
+faiss-cpu>=1.7.0
+numpy>=1.24.0
+pandas>=2.0.0
+faker>=33.0.0
+tqdm>=4.66.0
+tabulate>=0.9.0
+
+# Tests
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
